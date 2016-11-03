@@ -11,9 +11,12 @@ class IndexHandler(web.RequestHandler):
 
 class SocketHandler(websocket.WebSocketHandler):
     def check_origin(self, origin):
+        #we can use the origin as a key to know where to deliver a webhook to
+        print(origin)        
         return True
 
     def open(self):
+        print(self)
         if self not in cl:
             cl.append(self)
 
