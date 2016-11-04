@@ -3,7 +3,7 @@
 from tornado import websocket, web, ioloop
 import json
 
-cl = []
+clients = {}
 
 class IndexHandler(web.RequestHandler):
     def get(self):
@@ -11,39 +11,27 @@ class IndexHandler(web.RequestHandler):
 
 class SocketHandler(websocket.WebSocketHandler):
     def check_origin(self, origin):
-        #we can use the origin as a key to know where to deliver a webhook to
-        print(origin)        
         return True
 
     def open(self):
-        #print(dir(self))
-        print(self.get_query_argument('tenant'))
-        if self not in cl:
-            cl.append(self)
+        clients[self.get_query_argument('tenant')] = self
 
     def on_close(self):
-        if self in cl:
-            cl.remove(self)
+        tenant = self.get_query_argument('tenant')
+        if tenant in clients: 
+            del clients[tenant]
 
 class ApiHandler(web.RequestHandler):
 
     @web.asynchronous
     def get(self, *args):
         self.finish()
-        id = self.get_argument("id")
-        value = self.get_argument("value")
-        data = {"id": id, "value" : value}
-        data = json.dumps(data)
-        for c in cl:
-            c.write_message(data)
 
     @web.asynchronous
-    def post(self, *args):        
-        #print("posty mc post")
-        print(self.request.body)
-        print(dir(self.request))
-        print(self.request.host)
-        #print(dir(self)) 
+    def post(self, *args):    
+        tenant = self.get_query_argument('tenant')
+        if tenant in clients: 
+            clients[tenant].write_message(self.request.body)
         self.finish()
 
 app = web.Application([
