@@ -16,7 +16,8 @@ class SocketHandler(websocket.WebSocketHandler):
         return True
 
     def open(self):
-        print(self)
+        #print(dir(self))
+        print(self.get_query_argument('tenant'))
         if self not in cl:
             cl.append(self)
 
@@ -37,8 +38,13 @@ class ApiHandler(web.RequestHandler):
             c.write_message(data)
 
     @web.asynchronous
-    def post(self):
-        pass
+    def post(self, *args):        
+        #print("posty mc post")
+        print(self.request.body)
+        print(dir(self.request))
+        print(self.request.host)
+        #print(dir(self)) 
+        self.finish()
 
 app = web.Application([
     (r'/', IndexHandler),
