@@ -13,13 +13,14 @@ class SocketHandler(websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
 
-    def open(self):
-        clients[self.get_query_argument('tenant')] = self
+    def open(self):        
+        clients[self.request.uri.split('/subscribe/')[1]] = self
 
     def on_close(self):
-        tenant = self.get_query_argument('tenant')
+        tenant = self.request.uri.split('/subscribe/')[1]
         if tenant in clients: 
             del clients[tenant]
+                    
 
 class ApiHandler(web.RequestHandler):
 
@@ -29,15 +30,15 @@ class ApiHandler(web.RequestHandler):
 
     @web.asynchronous
     def post(self, *args):    
-        tenant = self.get_query_argument('tenant')
+        tenant = self.request.uri.split('/publish/')[1]
         if tenant in clients: 
             clients[tenant].write_message(self.request.body)
         self.finish()
 
 app = web.Application([
     (r'/', IndexHandler),
-    (r'/ws', SocketHandler),
-    (r'/api', ApiHandler),
+    (r'/subscribe/.*', SocketHandler),
+    (r'/publish/.*', ApiHandler),
     (r'/(favicon.ico)', web.StaticFileHandler, {'path': '../'}),
     (r'/(rest_api_example.png)', web.StaticFileHandler, {'path': './'}),
 ])
