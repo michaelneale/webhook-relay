@@ -31,8 +31,13 @@ class ApiHandler(web.RequestHandler):
     @web.asynchronous
     def post(self, *args):    
         tenant = self.request.uri.split('/publish/')[1]
+        headers = {}
+        for header in self.request.headers:
+            headers[header] = self.request.headers[header]        
+        payload = {'headers': headers, 'body': self.request.body}
+        
         if tenant in clients: 
-            clients[tenant].write_message(self.request.body)
+            clients[tenant].write_message(json.dumps(payload, ensure_ascii=False))
         self.finish()
 
 app = web.Application([
