@@ -1,29 +1,68 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>tornado WebSocket example</title>
-  <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.no-icons.min.css" rel="stylesheet">
+  <title>webhook-relay</title>
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
   <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 </head>
 <body>
-  <h1>Webhook relay test page. </h1>
-  If you can see this, Michael needs to fix this to show actual docs on how to use. 
-  
-  To test: <code>curl -X POST -d "hey" http://localhost:8888/publish/foo</code><br>
-  will send a message to the websock that this page subscribes to (look in the console for body)
-  <br>
-  <div id="message">OK</div>
-  <p>
-  <code>var ws = new WebSocket('ws://localhost:8888/subscribe/foo');</code>
-  will subscribe to the POST requests sent ot the host. The payload is in the event data field (which is the POST body). 
-  The thoery is we can forward on github webhooks verbatim via a NATed websocket client.
+  <div class='container'>
+    <h1>webhook-relay test page</h1>
+
+    <p>
+    If you can see this, Michael needs to fix this to show actual docs on how to use. 
+    </p>
+    
+    <p>To publish:</p>
+    <code>
+      curl -X POST -d "hey" <span id='publishUrl'></span>
+    </code>
+    <br>
+    will send a message to the websock that this page subscribes to (look in the console for body)
+    <br>
+
+    <p>To subscribe:</p>
+    <p>
+    <code>
+      var ws = new WebSocket(<span id='subscribeUrl'></span>);
+    </code>
+    will subscribe to the POST requests sent ot the host. The payload is in the event data field (which is the POST body). 
+    The theory is we can forward on github webhooks verbatim via a NATed websocket client.
+
+    <br/>
+    <br/>
+    <br/>
+    <legend>Publisher</legend>
+      
+    <form class="form-inline" role="form" onsubmit='return publish()'>
+      <div class="form-group">
+        <label class="sr-only" for="payload">Payload</label>
+        <input type='text' class="form-control" id="payload" placeholder="payload">
+      </div>
+      <button type='submit' class="btn btn-default" >Publish</button>
+    </form>
+
+    <br/>
+    <div>
+      <legend>Subscriber</legend>
+      <div id="message">OK</div>
+      <div id='message-data' style='font-family: monospace; width: 100%'></div>
+    </div>
+  </div>
   <script>
   
-    var proto = (window.location.protocol.startsWith("https"))? "wss" : "ws"; 
-    var host = proto + "://" + window.location.hostname + ":" + window.location.port + "/subscribe/foo";
+    var wsProto = (window.location.protocol.startsWith('https')) ? 'wss://' : 'ws://'; 
+    var port = (window.location.port === '') ? '' : ':' + window.location.port;
+
+    var subscribeUrl = wsProto + window.location.hostname + port + '/subscribe/foo';
+    var publishUrl = window.location.protocol + '//' + window.location.hostname + port + '/publish/foo';
+
+    $('#publishUrl').text(publishUrl);
+    $('#subscribeUrl').text(subscribeUrl);
   
-    var ws = new WebSocket(host);
+    var ws = new WebSocket(subscribeUrl);
     var $message = $('#message');
+    var $messageData = $('#message-data');
 
     ws.onopen = function(){
       $message.attr("class", 'label label-success');
@@ -31,15 +70,15 @@
     };
     
     ws.onmessage = function(ev){
-      $message.attr("class", 'label label-info');
+      $message.attr('class', 'label label-info');
       $message.hide();
-      $message.fadeIn("slow");
-      $message.text('recieved message');
-      console.log(ev.data);
+      $message.fadeIn('slow');
+      $message.text('Received message');
+      $messageData.text(ev.data);
     };
 
     ws.onclose = function(ev){
-      $message.attr("class", 'label label-important');
+      $message.attr('class', 'label label-important');
       $message.text('closed');
     };
     
@@ -47,6 +86,11 @@
       $message.attr("class", 'label label-warning');
       $message.text('error occurred');
     };
+
+    window.publish = function(e) {
+      $.post(publishUrl, $('#payload').val());
+      return false;
+    }
 
   </script>
 </body>
