@@ -15,19 +15,18 @@
     
     <p>To publish:</p>
     <code>
-      curl -X POST -d "hey" <span id='publishUrl'></span>
+      curl -X POST -d "hey" "<span id='publishUrl'>"</span>
     </code>
     <br>
-    will send a message to the websock that this page subscribes to (look in the console for body)
+    The command above will send a message to the websock that this page subscribes to (look in the console for body)
     <br>
 
     <p>To subscribe:</p>
     <p>
     <code>
-      var ws = new WebSocket(<span id='subscribeUrl'></span>);
+      var ws = new WebSocket("<span id='subscribeUrl'></span>");
     </code>
-    will subscribe to the POST requests sent ot the host. The payload is in the event data field (which is the POST body). 
-    The theory is we can forward on github webhooks verbatim via a NATed websocket client.
+    The code above will subscribe to the POST requests sent ot the host. The payload is in the event data field (which is the POST body). 
 
     <br/>
     <br/>
