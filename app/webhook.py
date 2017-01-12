@@ -3,7 +3,11 @@
 from tornado import websocket, web, ioloop
 import json
 
+# here we keep the currently connected clients
 clients = {}
+
+# Here we can keep things to store and forward if a cient reconnects
+store = {}
 
 class IndexHandler(web.RequestHandler):
     def get(self):
@@ -14,7 +18,19 @@ class SocketHandler(websocket.WebSocketHandler):
         return True
 
     def open(self):        
-        clients[self.request.uri.split('/subscribe/')[1]] = self
+        tenant = self.request.uri.split('/subscribe/')[1]
+        
+        # see if there are any messages to take care of
+        if tenant in store: 
+            print('flushing out messaages')
+            print(store)
+            messages = store[tenant]
+            for payload in messages:                
+                self.write_message(json.dumps(payload, ensure_ascii=False))                    
+        store[tenant] = []
+                
+        clients[tenant] = self
+        
 
     def on_close(self):
         tenant = self.request.uri.split('/subscribe/')[1]
@@ -38,6 +54,10 @@ class ApiHandler(web.RequestHandler):
         
         if tenant in clients: 
             clients[tenant].write_message(json.dumps(payload, ensure_ascii=False))
+        else:
+            if tenant in store:
+                store[tenant].append(payload)
+                
         self.finish()
 
 app = web.Application([
