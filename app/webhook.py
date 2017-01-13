@@ -19,18 +19,16 @@ class SocketHandler(websocket.WebSocketHandler):
 
     def open(self):        
         tenant = self.request.uri.split('/subscribe/')[1]
+        clients[tenant] = self
+        self.flush_messages(tenant)
         
-        # see if there are any messages to take care of
+    # see if there are any messages to forward on          
+    def flush_messages(self, tenant):
         if tenant in store: 
-            print('flushing out messaages')
-            print(store)
             messages = store[tenant]
             for payload in messages:                
                 self.write_message(json.dumps(payload, ensure_ascii=False))                    
         store[tenant] = []
-                
-        clients[tenant] = self
-        
 
     def on_close(self):
         tenant = self.request.uri.split('/subscribe/')[1]
@@ -55,10 +53,14 @@ class ApiHandler(web.RequestHandler):
         if tenant in clients: 
             clients[tenant].write_message(json.dumps(payload, ensure_ascii=False))
         else:
-            if tenant in store:
-                store[tenant].append(payload)
+            self.store_message(tenant, payload)
                 
         self.finish()
+
+    # Keep for later        
+    def store_message(self, tenant, payload):
+        if tenant in store:
+            store[tenant].append(payload)
 
 app = web.Application([
     (r'/', IndexHandler),
