@@ -1,6 +1,7 @@
 # heavily borrowing from: https://github.com/hiroakis/tornado-websocket-example
 
 from tornado import websocket, web, ioloop
+from tornado.ioloop import PeriodicCallback
 import json
 
 # here we keep the currently connected clients
@@ -14,13 +15,21 @@ class IndexHandler(web.RequestHandler):
         self.render("index.html")
 
 class SocketHandler(websocket.WebSocketHandler):
+    
     def check_origin(self, origin):
         return True
 
-    def open(self):        
+    def open(self):  
+        self.timeout = None            
+        self.callback = PeriodicCallback(self.send_hello, 20000)
+        self.callback.start()
         tenant = self.request.uri.split('/subscribe/')[1]
         clients[tenant] = self
         self.flush_messages(tenant)
+    
+    # keep the connection alive through proxies as much as possible    
+    def send_hello(self):
+        self.ping('ping')
         
     # see if there are any messages to forward on          
     def flush_messages(self, tenant):
@@ -31,6 +40,7 @@ class SocketHandler(websocket.WebSocketHandler):
         store[tenant] = []
 
     def on_close(self):
+        self.callback.stop()
         tenant = self.request.uri.split('/subscribe/')[1]
         if tenant in clients: 
             del clients[tenant]
