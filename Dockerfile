@@ -1,5 +1,5 @@
 FROM ubuntu:16.04
-EXPOSE 8888
+EXPOSE 8080
 
 RUN apt-get update && apt-get install -y python
 #RUN pip install git+https://github.com/dpallot/simple-websocket-server.git
