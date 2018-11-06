@@ -56,7 +56,7 @@ class ApiHandler(web.RequestHandler):
     def post(self, *args):
         publishedUri = self.request.uri.split('/publish/')[1]
         tenant = publishedUri.split('/')[0]
-        endpoint = publishedUri.split(tenant)[1]
+        endpoint = "/" + "/".join(publishedUri.split('/')[1:])
         headers = {}
         for header in self.request.headers:
             headers[header] = self.request.headers[header]        
