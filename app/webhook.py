@@ -3,12 +3,19 @@
 from tornado import websocket, web, ioloop
 from tornado.ioloop import PeriodicCallback
 import json
+import os
+import logging
+import tornado.log
+import re
+import datetime
 
 # here we keep the currently connected clients
 clients = {}
 
 # Here we can keep things to store and forward if a cient reconnects
 store = {}
+
+logger = logging.getLogger('tornado.access')
 
 class IndexHandler(web.RequestHandler):
     def get(self):
@@ -26,8 +33,9 @@ class SocketHandler(websocket.WebSocketHandler):
         tenant = self.request.uri.split('/subscribe/')[1]
         clients[tenant] = self
         self.flush_messages(tenant)
-    
-    # keep the connection alive through proxies as much as possible    
+        logger.info("Tenant %s added to list of clients", tenantName(tenant))
+
+    # keep the connection alive through proxies as much as possible
     def send_hello(self):
         self.ping('ping')
         
@@ -37,6 +45,7 @@ class SocketHandler(websocket.WebSocketHandler):
             messages = store[tenant]
             for payload in messages:                
                 self.write_message(json.dumps(payload, ensure_ascii=False))                    
+            logger.debug("Messages of tenant %s flushed", tenantName(tenant))
         store[tenant] = []
 
     def on_close(self):
@@ -44,7 +53,8 @@ class SocketHandler(websocket.WebSocketHandler):
         tenant = self.request.uri.split('/subscribe/')[1]
         if tenant in clients: 
             del clients[tenant]
-                    
+            logger.info("Tenant %s removed from list of clients", tenantName(tenant))
+
 
 class ApiHandler(web.RequestHandler):
 
@@ -63,8 +73,10 @@ class ApiHandler(web.RequestHandler):
         payload = {'headers': headers, 'requestPath': endpoint, 'body': self.request.body}
         
         if tenant in clients:
+            logger.debug("Publishing events to %s", tenantName(tenant))
             clients[tenant].write_message(json.dumps(payload, ensure_ascii=False))
         else:
+            logger.debug("Storing events for %s", tenantName(tenant))
             self.store_message(tenant, payload)
                 
         self.finish()
@@ -73,6 +85,24 @@ class ApiHandler(web.RequestHandler):
     def store_message(self, tenant, payload):
         if tenant in store:
             store[tenant].append(payload)
+            logger.debug("Storing event for tenant %s - number of events stored = %d", tenantName(tenant), len(store[tenant]))
+
+def tenantName(tenant):
+    return "-".join(tenant.split('-')[:-1])
+
+
+class ObfuscateSecretFormatter(object):
+    def format(self, record):
+        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M") + " - " + re.sub("([A-Za-z0-9]+)\-\w{20}", r"\1-********************", record.getMessage())
+
+def setupLogger():
+    logger.propagate = False
+    handler = logging.StreamHandler()
+    handler.setFormatter(ObfuscateSecretFormatter())
+    logger.addHandler(handler)
+    level = logging.getLevelName(os.getenv('LOG_LEVEL', "INFO"))
+    logger.setLevel(level)
+
 
 app = web.Application([
     (r'/', IndexHandler),
@@ -83,5 +113,6 @@ app = web.Application([
 ])
 
 if __name__ == '__main__':
+    setupLogger()
     app.listen(8080)
     ioloop.IOLoop.instance().start()

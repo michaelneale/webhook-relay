@@ -8,4 +8,6 @@ RUN pip install tornado
 
 ADD ./app /app
 
+ENV LOG_LEVEL "INFO"
+
 CMD python /app/webhook.py
